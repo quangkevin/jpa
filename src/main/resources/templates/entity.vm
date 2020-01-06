@@ -1,0 +1,249 @@
+#macro (quot $val)
+#if ($val)"$val"#{else}null#end
+#end
+
+#if ($table.type.enclosingElement)
+package ${table.type.enclosingElement};
+#end
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.function.Supplier;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import com.jooreka.sql.SqlConnectionSession;
+import com.jooreka.sql.SqlEntity;
+import com.jooreka.sql.SqlException;
+import com.jooreka.sql.SqlSequence;
+import com.jooreka.sql.SqlSession;
+import com.jooreka.sql.SqlTable;
+import com.jooreka.sql.SqlRow;
+
+final class ${table.implEntitySimpleName} {
+  static final class Table implements SqlTable<${table.entitySimpleName}> {
+    public static Table getOrCreate(SqlSession session) {
+      return session.getConnectionSession(#quot($table.database)).getTable(Table.class, Table::new);
+    }
+
+    private SqlConnectionSession _session;
+    private Map<Object, Entity> _entities;
+    private List<Entity> _dirtyList;
+    private SqlSequence _sequence;
+
+    Table(SqlConnectionSession session) {
+      _session = session;
+      _entities = new HashMap<>();
+      _dirtyList = new ArrayList<>();
+      _sequence = session.getSession().getConfig().createSequence(getDatabaseName(), getTableName());
+    }
+
+    @Override public SqlConnectionSession getSession() { return _session; }
+    @Override public String getTableName() { return "$table.tableName"; }
+    @Override public String getDatabaseName() { return #quot($table.database); }
+
+    @Override public Entity create() {
+      Entity entity = new Entity();
+      entity._table = this;
+      entity._isPersisted = false;
+      #if ($table.idColumn)
+	entity._idSupplier = _sequence.next();
+      #end
+
+      addToDirtyList(entity);
+
+      return entity;
+    }
+
+    @Override public Entity reify(SqlRow row) {
+      #if ($table.idColumn)
+      Long id = row.nextLong();
+
+      Entity entity = _entities.get(id);
+
+      if (null == entity) {
+	entity = new Entity();
+	entity._table = this;
+	entity._isPersisted = true;
+
+	#foreach ($column in $table.columns)
+	  entity.$column.fieldName = row.${column.sqlRowNextMethodName}();
+	#end
+
+	_entities.put(id, entity);
+      }
+      #else
+      Entity entity = new Entity();
+      entity._table = this;
+      entity._isPersisted = true;
+
+      #foreach ($column in $table.columns)
+	entity.$column.fieldName = row.${column.sqlRowNextMethodName}();
+      #end 
+      #end
+
+      return entity;
+    }
+
+    @Override public void flush() {
+      flushDirtyList();
+      clear();
+    }
+    
+    @Override public void clear() {
+      _dirtyList.clear();      
+      _entities.clear();
+    }
+
+    private void addToDirtyList(Entity entity) {
+      if (!entity._isOnDirtyList) {
+	entity._isOnDirtyList = true;
+	_dirtyList.add(entity);
+      }
+    }
+
+    private void flushDirtyList() {
+      if (_dirtyList.isEmpty()) return;
+      
+      #if ($table.idColumn)
+	_dirtyList.sort((a, b) -> a.${table.idColumn.getterMethodName}().compareTo(b.${table.idColumn.getterMethodName}()));
+      #end
+
+      for (Entity entity : _dirtyList) {
+	entity.flush();
+      }
+
+      PreparedStatement createStatement = null;
+      PreparedStatement updateStatement = null;
+      PreparedStatement deleteStatement = null;
+
+      try {
+	for (Entity entity : _dirtyList) {
+	  switch (entity.getAction()) {
+	  case INSERT:
+	    if (createStatement == null) {
+	      createStatement = _session.getConnection().prepareStatement("$table.insertStatement");
+	    }
+
+	    #foreach ($column in $table.columns)
+	      #set ($counter = $foreach.index + 1)
+	      #if ($column.isId())
+		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.getterMethodName}());
+	      #else
+		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});
+   	      #end
+	    #end
+	    createStatement.executeUpdate();
+
+	    break;
+
+	  case UPDATE:
+	    if (updateStatement == null) {
+	      updateStatement = _session.getConnection().prepareStatement("$table.updateStatement");
+	    }
+
+	    #set ($counter = 1)
+
+	    #foreach ($column in $table.columns)##
+	      #if (!$column.isId())##
+		updateStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});##
+		#set ($counter = $counter + 1)##
+	      #end##
+	    #end##
+	    updateStatement.${table.idColumn.sqlRowSetMethodName}($counter, entity.${table.idColumn.getterMethodName}()); 
+	    updateStatement.executeUpdate();
+	    
+	    break;
+	  
+	  case DELETE:
+	    if (deleteStatement == null) {
+	      deleteStatement = _session.getConnection().prepareStatement("$table.deleteStatement");
+	    }
+
+	    deleteStatement.${table.idColumn.sqlRowSetMethodName}(1, entity.${table.idColumn.getterMethodName}());
+	    deleteStatement.executeUpdate();
+	    
+	    break;
+	  }
+	}      
+      } catch (SQLException e) {
+	throw new SqlException(e, "Fail to flush " + getDatabaseName() + "." + getTableName());
+	
+      } finally {
+	try { if (createStatement != null) createStatement.close(); } catch (Exception e) {}
+	try { if (updateStatement != null) updateStatement.close(); } catch (Exception e) {}
+	try { if (deleteStatement != null) deleteStatement.close(); } catch (Exception e) {}	
+      }
+    }
+  }
+
+  private static final class Entity extends $table.entitySimpleName {
+    private static enum Action { NONE, INSERT, UPDATE, DELETE }
+    
+    private transient Table _table;
+    private transient boolean _isPersisted;
+    private transient boolean _isDirty;
+    private transient boolean _isDeleted;
+    private transient boolean _isOnDirtyList;
+    private transient Supplier<Long> _idSupplier;
+
+    #foreach ($column in $table.columns)##
+      private $column.javaType $column.fieldName;##
+    #end
+
+    #foreach ($column in $table.columns)
+      #if ($column.getterMethodName)
+      @Override public $column.javaType ${column.getterMethodName}() {
+	#if ($column.isId())
+	  if ($column.fieldName == null) {
+	    $column.fieldName = _idSupplier.get();
+	    _table._entities.put($column.fieldName, this);
+	  }
+	
+	#end
+	return $column.fieldName;
+      }
+      #end
+    #end
+
+    #foreach ($column in $table.columns)
+      #if ($column.setterMethodName)
+	@Override public $column.setterReturnType ${column.setterMethodName}($column.javaType $column.fieldName) {
+	  if (!_isDirty || !Objects.equals(this.$column.fieldName, $column.fieldName)) {
+	    this.$column.fieldName = $column.fieldName;
+	    markDirty();
+	  }
+
+	  #if ("void" != $column.setterReturnType)return this;#end
+	}
+      #end	  
+    #end
+
+    @Override public boolean isPersisted() { return _isPersisted; }
+    
+    @Override public void flush() {}
+    
+    @Override public void delete() {
+      _isDeleted = true;
+      _table.addToDirtyList(this);
+    }
+
+    @Override public void markDirty() {
+      _isDirty = true;
+      _table.addToDirtyList(this);
+    }
+
+    Action getAction() {
+      if (!_isPersisted && !_isDeleted) return Action.INSERT;
+      if (_isPersisted && !_isDeleted) return Action.UPDATE;
+      if (_isPersisted && _isDeleted) return Action.DELETE;
+      return Action.NONE;
+    }
+  }
+}
+

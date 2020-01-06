@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$PROJECT_DIR$/build/classes/java/main" />
+          <entry name="$PROJECT_DIR$/build/resources/main" />
+        </processorPath>
+        <module name="jpa.test" />
+      </profile>
+    </annotationProcessing>
+  </component>
+</project>
