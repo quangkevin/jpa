@@ -1,5 +1,8 @@
 package com.jooreka.sql.processor;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.persistence.Entity;
 import javax.persistence.Table;
@@ -31,11 +34,17 @@ public class TableTemplateVars {
     }
 
     if (table.indexes() != null) {
-      result.indices.addAll(Arrays.stream(table.indexes()).map(IndexTemplateVars::create).collect(Collectors.toList()));
+      result.indices.addAll(Arrays
+			    .stream(table.indexes())
+			    .map(IndexTemplateVars::create)
+			    .collect(Collectors.toList()));
     }
 
     if (table.uniqueConstraints() != null) {
-      result.uniqueConstraints.addAll(Arrays.stream(table.uniqueConstraints()).map(UniqueConstraintTemplateVars::create).collect(Collectors.toList()));
+      result.indices.addAll(Arrays
+			    .stream(table.uniqueConstraints())
+			    .map(IndexTemplateVars::create)
+			    .collect(Collectors.toList()));
     }
 
     if (result.tableName == null) {
@@ -48,7 +57,6 @@ public class TableTemplateVars {
   private String database;
   private String tableName;
   private Set<ColumnTemplateVars> columns = new LinkedHashSet<>();
-  private Set<UniqueConstraintTemplateVars> uniqueConstraints = new LinkedHashSet<>();
   private Set<IndexTemplateVars> indices = new LinkedHashSet<>();
 
   private TypeElement type;
@@ -59,7 +67,6 @@ public class TableTemplateVars {
     if (database == null) this.database = proto.database;
 
     this.columns.addAll(proto.columns);
-    this.uniqueConstraints.addAll(proto.uniqueConstraints);
     this.indices.addAll(proto.indices);
   }
   
@@ -68,18 +75,30 @@ public class TableTemplateVars {
   public String getEntitySimpleName() { return getType().getSimpleName().toString(); }
 
   public String getImplEntitySimpleName() {
-    return getEntitySimpleName() + "_Imp";
+    return getEntitySimpleName() + "$Impl";
   }
   
   public String getImplEntityQualifiedName() {
     return getType().getEnclosingElement() + "." + getImplEntitySimpleName();
   }
+
+  public int getIdColumnIndex() {
+    int index = -1;
+    for (ColumnTemplateVars column : columns) {
+      ++index;
+      if (column.getIsId()) return index;
+    }
+
+    return -1;
+  }
   
   public ColumnTemplateVars getIdColumn() {
-    return columns.stream().filter(x -> x.isId()).findFirst().orElse(null);
+    return columns.stream().filter(x -> x.getIsId()).findFirst().orElse(null);
   }
 
   public String getInsertStatement() {
+    Collection<ColumnTemplateVars> columns = getColumnsForInsert();
+    
     return String.format("INSERT INTO %s(%s) VALUES (%s)",
 			 getTableName(),
 			 columns.stream().map(x -> x.getColumnName()).collect(Collectors.joining(", ")),
@@ -87,10 +106,12 @@ public class TableTemplateVars {
   }
 
   public String getUpdateStatement() {
+    Collection<ColumnTemplateVars> columns = getColumnsForUpdate();
+    
     return String.format("UPDATE %s SET %s WHERE %s = ?",
 			 getTableName(),
 			 columns.stream()
-			 .filter(x -> !x.isId())
+			 .filter(x -> !x.getIsId())
 			 .map(x -> x.getColumnName() + " = ?")
 			 .collect(Collectors.joining(", ")),
 			 getIdColumn().getColumnName());
@@ -114,11 +135,35 @@ public class TableTemplateVars {
     return columns;
   }
 
-  public Set<UniqueConstraintTemplateVars> getUniqueConstraints() {
-    return uniqueConstraints;
+  public List<ColumnTemplateVars> getColumnsForInsert() {
+    return getColumns().stream().filter(x -> x.getInsertable()).collect(Collectors.toList());
+  }
+
+  public List<ColumnTemplateVars> getColumnsForUpdate() {
+    return getColumns().stream().filter(x -> x.getUpdatable()).collect(Collectors.toList());
   }
 
   public Set<IndexTemplateVars> getIndices() {
     return indices;
+  }
+
+  public boolean hasFlushMethod() {
+    return hasMethod("flush");
+  }
+
+  public boolean hasDeleteMethod() {
+    return hasMethod("delete");
+  }  
+
+  private boolean hasMethod(String name) {
+    for (Element e : getType().getEnclosedElements()) {
+      if (ElementKind.METHOD == e.getKind()
+	  && name.equals(((ExecutableElement) e).getSimpleName().toString())
+	  && ((ExecutableElement) e).getParameters().isEmpty()) {
+	return true;
+      }
+    }
+
+    return false;    
   }
 }

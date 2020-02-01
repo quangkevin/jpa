@@ -6,6 +6,8 @@
 package ${table.type.enclosingElement};
 #end
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -16,17 +18,24 @@ import java.util.function.Supplier;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Types;
 
+import com.jooreka.sql.AbstractSqlTable;
+import com.jooreka.sql.BasicSqlColumn;
+import com.jooreka.sql.BasicSqlIndex;
+import com.jooreka.sql.SqlColumn;
 import com.jooreka.sql.SqlConnectionSession;
 import com.jooreka.sql.SqlEntity;
 import com.jooreka.sql.SqlException;
+import com.jooreka.sql.SqlIndex;
+import com.jooreka.sql.SqlResultSet;
 import com.jooreka.sql.SqlSequence;
 import com.jooreka.sql.SqlSession;
+import com.jooreka.sql.SqlStatementBuilder;
 import com.jooreka.sql.SqlTable;
-import com.jooreka.sql.SqlRow;
 
 final class ${table.implEntitySimpleName} {
-  static final class Table implements SqlTable<${table.entitySimpleName}> {
+  static final class Table extends AbstractSqlTable<$table.entitySimpleName> {
     public static Table getOrCreate(SqlSession session) {
       return session.getConnectionSession(#quot($table.database)).getTable(Table.class, Table::new);
     }
@@ -35,6 +44,24 @@ final class ${table.implEntitySimpleName} {
     private Map<Object, Entity> _entities;
     private List<Entity> _dirtyList;
     private SqlSequence _sequence;
+    
+    private List<SqlColumn> _columns = Collections.unmodifiableList(Arrays.asList(#foreach ($column in $table.columns)
+                                                                                  new BasicSqlColumn.Builder()
+										  .withName("$column.columnName")
+ 										  .withType($column.sqlType)
+ 										  .withLength($column.length)
+ 										  .withDefinition("$column.columnName $column.columnDefinition")
+										  .withUnique($column.unique)
+										  .withNullable($column.nullable)
+ 										  .withInsertable($column.insertable)
+ 										  .withUpdatable($column.updatable)
+ 										  .withIsId($column.isId)
+										  .build()
+									          #if ($foreach.index < $table.columns.size() - 1),#end#end));
+
+    private List<SqlIndex> _indices = Collections.unmodifiableList(Arrays.asList(#foreach ($index in $table.indices)
+    	    		   	      				                 new BasicSqlIndex($index.name, $index.columns, $index.isUnique)
+										 #if ($foreach.index < $table.indices.size() - 1),#end#end));
 
     Table(SqlConnectionSession session) {
       _session = session;
@@ -46,8 +73,10 @@ final class ${table.implEntitySimpleName} {
     @Override public SqlConnectionSession getSession() { return _session; }
     @Override public String getTableName() { return "$table.tableName"; }
     @Override public String getDatabaseName() { return #quot($table.database); }
+    @Override public List<SqlColumn> getColumns() { return _columns; }
+    @Override public List<SqlIndex> getIndices() { return _indices; }
 
-    @Override public Entity create() {
+    @Override public $table.entitySimpleName createEntity() {
       Entity entity = new Entity();
       entity._table = this;
       entity._isPersisted = false;
@@ -60,9 +89,16 @@ final class ${table.implEntitySimpleName} {
       return entity;
     }
 
-    @Override public Entity reify(SqlRow row) {
+    @Override public $table.entitySimpleName reifyEntity(SqlResultSet rs) {
       #if ($table.idColumn)
-      Long id = row.nextLong();
+      #if (0 < $table.idColumnIndex)
+      int columnIndex = rs.getColumnIndex();
+      rs.setColumnIndex(columnIndex + $table.idColumnIndex);
+      Object id = rs.${table.idColumn.sqlRowNextMethodName}();
+      rs.setColumnIndex(columnIndex);
+      #else
+      Object id = rs.${table.idColumn.sqlRowNextMethodName}().get();
+      #end
 
       Entity entity = _entities.get(id);
 
@@ -72,7 +108,11 @@ final class ${table.implEntitySimpleName} {
 	entity._isPersisted = true;
 
 	#foreach ($column in $table.columns)
-	  entity.$column.fieldName = row.${column.sqlRowNextMethodName}();
+	  #if ($column.nullable)
+	  entity.$column.fieldName = rs.${column.sqlRowNextMethodName}().orElse(null);
+	  #else
+ 	  entity.$column.fieldName = rs.${column.sqlRowNextMethodName}().get();
+	  #end
 	#end
 
 	_entities.put(id, entity);
@@ -83,11 +123,29 @@ final class ${table.implEntitySimpleName} {
       entity._isPersisted = true;
 
       #foreach ($column in $table.columns)
-	entity.$column.fieldName = row.${column.sqlRowNextMethodName}();
+	#if ($column.nullable)
+	entity.$column.fieldName = rs.${column.sqlRowNextMethodName}().orElse(null);
+	#else
+ 	entity.$column.fieldName = rs.${column.sqlRowNextMethodName}().get();
+	#end
       #end 
       #end
 
       return entity;
+    }
+
+    @Override
+    public $table.entitySimpleName getEntity(Object id) {
+      #if ($table.idColumn)
+      Entity result = _entities.get(id);
+      if (null == result) {
+        result = (Entity) getEntityWhere(new SqlStatementBuilder().add("$table.idColumn.columnName = ?", id).build());
+      }
+
+      return result;
+      #else
+      throw new NotSupportedException("Table $table.tableName does not have PRIMARY KEY column");
+      #end
     }
 
     @Override public void flush() {
@@ -130,9 +188,9 @@ final class ${table.implEntitySimpleName} {
 	      createStatement = _session.getConnection().prepareStatement("$table.insertStatement");
 	    }
 
-	    #foreach ($column in $table.columns)
+	    #foreach ($column in $table.columnsForInsert)
 	      #set ($counter = $foreach.index + 1)
-	      #if ($column.isId())
+	      #if ($column.isId)
 		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.getterMethodName}());
 	      #else
 		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});
@@ -149,8 +207,8 @@ final class ${table.implEntitySimpleName} {
 
 	    #set ($counter = 1)
 
-	    #foreach ($column in $table.columns)##
-	      #if (!$column.isId())##
+	    #foreach ($column in $table.columnsForUpdate)##
+	      #if (!$column.isId)##
 		updateStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});##
 		#set ($counter = $counter + 1)##
 	      #end##
@@ -199,7 +257,7 @@ final class ${table.implEntitySimpleName} {
     #foreach ($column in $table.columns)
       #if ($column.getterMethodName)
       @Override public $column.javaType ${column.getterMethodName}() {
-	#if ($column.isId())
+	#if ($column.isId)
 	  if ($column.fieldName == null) {
 	    $column.fieldName = _idSupplier.get();
 	    _table._entities.put($column.fieldName, this);
@@ -226,9 +284,12 @@ final class ${table.implEntitySimpleName} {
 
     @Override public boolean isPersisted() { return _isPersisted; }
     
-    @Override public void flush() {}
+    @Override public void flush() {
+      #if ($table.hasFlushMethod()) super.flush();#end
+    }
     
     @Override public void delete() {
+      #if ($table.hasDeleteMethod()) super.delete();#end
       _isDeleted = true;
       _table.addToDirtyList(this);
     }

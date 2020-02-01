@@ -66,7 +66,6 @@ public class EntityProcessor extends AbstractProcessor {
     }
   }
 
-
   private Collection<TableTemplateVars> createTemplateVars(RoundEnvironment round) {
     Map<String, TableTemplateVars> vars = new HashMap<>();
 

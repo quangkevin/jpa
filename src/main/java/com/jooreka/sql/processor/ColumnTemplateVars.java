@@ -12,12 +12,12 @@ public class ColumnTemplateVars {
 
     result.columnName = "".equals(column.name()) ? null : column.name();
     result.unique = column.unique();
-    result.nullable = column.nullable();
+    result.isId = element.getAnnotation(Id.class) != null;    
+    result.nullable = !result.isId && column.nullable();
     result.insertable = column.insertable();
     result.updatable = column.updatable();
-    result.columnDefinition = column.columnDefinition();
+    result.columnDefinition = "".equals(column.columnDefinition()) ? null : column.columnDefinition();
     result.length = column.length();
-    result.isId = element.getAnnotation(Id.class) != null;
 
     if (element.getParameters().isEmpty()) {
       result.getter = element;
@@ -67,9 +67,9 @@ public class ColumnTemplateVars {
 
   public void merge(ColumnTemplateVars column) {
     if (unique == null) unique = column.unique;
-    if (nullable == null) nullable = column.nullable;
-    if (insertable == null) insertable = column.insertable;
-    if (updatable == null) updatable = column.updatable;
+    if (nullable == null || nullable) nullable = column.nullable;
+    if (insertable == null || insertable) insertable = column.insertable;
+    if (updatable == null || updatable) updatable = column.updatable;
     if (columnDefinition == null) columnDefinition = column.columnDefinition;
     if (length == null) length = column.length;
     if (!isId) isId = column.isId;
@@ -86,11 +86,36 @@ public class ColumnTemplateVars {
   }
   
   public String getSqlRowNextMethodName() {
-    return "next" + getSqlType();
+    return "next" + getSqlTypeName();
   }
 
   public String getSqlRowSetMethodName() {
-    return "set" + getSqlType();
+    return "set" + getSqlTypeName();
+  }
+
+  public String getSqlType() {
+    String type = javaType.getKind().name();
+    
+    switch (javaType.getKind()) {
+    case DECLARED:
+      type = ((DeclaredType) javaType).asElement().getSimpleName().toString().toUpperCase();
+      break;
+
+    default:
+      type = javaType.getKind().name();
+    }
+
+    switch (type) {
+    case "BOOLEAN": return "Types.BOOLEAN";
+    case "BYTE": return "Types.TINYINT";
+    case "FLOAT": return "Types.FLOAT";
+    case "DOUBLE": return "Types.DOUBLE";
+    case "INT": return "Types.INTEGER";
+    case "LONG": return "Types.BIGINT";
+    case "ARRAY": return "Types.BLOB";
+    case "STRING": return "Types.VARCHAR";
+    default: return "Types.BLOB";
+    }
   }
 
   public boolean getUnique() {
@@ -110,14 +135,34 @@ public class ColumnTemplateVars {
   }
 
   public String getColumnDefinition() {
-    return columnDefinition;
+    String result = columnDefinition;
+    
+    if (null == result) {
+      result = getSqlType().substring("Types.".length());
+
+      result = (getLength() == null
+		? result
+		: String.format("%s(%d)", result, getLength()));
+
+      if (getIsId()) {
+	result += " PRIMARY KEY";
+      }
+
+      if (!getNullable()) {
+	result += " NOT NULL";
+      }
+    }
+
+    return result;
   }
 
   public Integer getLength() {
-    return length;
+    return ("Types.VARCHAR".equals(getSqlType())
+	    ? length
+	    : null);
   }
 
-  public boolean isId() {
+  public boolean getIsId() {
     return isId;
   }
 
@@ -137,7 +182,7 @@ public class ColumnTemplateVars {
     return setter == null ? null : setter.getReturnType().toString();
   }
 
-  private String getSqlType() {
+  private String getSqlTypeName() {
     String type = null;
     
     switch (javaType.getKind()) {
