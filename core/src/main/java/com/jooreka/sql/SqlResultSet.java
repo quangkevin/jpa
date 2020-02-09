@@ -11,7 +11,7 @@ public interface SqlResultSet {
 
   public Optional<Byte> nextByte();
   public Optional<Boolean> nextBoolean();
-  public Optional<Integer> nextInt();
+  public Optional<Integer> nextInteger();
   public Optional<Long> nextLong();
   public Optional<Float> nextFloat();
   public Optional<Double> nextDouble();

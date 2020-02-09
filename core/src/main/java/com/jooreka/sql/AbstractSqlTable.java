@@ -68,7 +68,7 @@ public abstract class AbstractSqlTable<T extends SqlEntity> implements SqlTable<
 
   @Override
   public int count(SqlStatement sql) {
-    return query(sql, rs -> rs.next() ? rs.nextInt().get() : 0);
+    return query(sql, rs -> rs.next() ? rs.nextInteger().get() : 0);
   }
     
   @Override

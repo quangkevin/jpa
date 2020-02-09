@@ -2,8 +2,8 @@
 #if ($val)"$val"#{else}null#end
 #end
 
-#if ($table.type.enclosingElement)
-package ${table.type.enclosingElement};
+#if ($table.package)
+package ${table.package};
 #end
 
 import java.util.Arrays;
@@ -35,7 +35,7 @@ import com.jooreka.sql.SqlStatementBuilder;
 import com.jooreka.sql.SqlTable;
 
 final class ${table.implEntitySimpleName} {
-  static final class Table extends AbstractSqlTable<$table.entitySimpleName> {
+  static final class Table extends AbstractSqlTable<$table.qualifiedEntityName> {
     public static Table getOrCreate(SqlSession session) {
       return session.getConnectionSession(#quot($table.database)).getTable(Table.class, Table::new);
     }
@@ -76,7 +76,7 @@ final class ${table.implEntitySimpleName} {
     @Override public List<SqlColumn> getColumns() { return _columns; }
     @Override public List<SqlIndex> getIndices() { return _indices; }
 
-    @Override public $table.entitySimpleName createEntity() {
+    @Override public $table.qualifiedEntityName createEntity() {
       Entity entity = new Entity();
       entity._table = this;
       entity._isPersisted = false;
@@ -89,7 +89,7 @@ final class ${table.implEntitySimpleName} {
       return entity;
     }
 
-    @Override public $table.entitySimpleName reifyEntity(SqlResultSet rs) {
+    @Override public $table.qualifiedEntityName reifyEntity(SqlResultSet rs) {
       #if ($table.idColumn)
       #if (0 < $table.idColumnIndex)
       int columnIndex = rs.getColumnIndex();
@@ -135,7 +135,7 @@ final class ${table.implEntitySimpleName} {
     }
 
     @Override
-    public $table.entitySimpleName getEntity(Object id) {
+    public $table.qualifiedEntityName getEntity(Object id) {
       #if ($table.idColumn)
       Entity result = _entities.get(id);
       if (null == result) {
@@ -240,7 +240,7 @@ final class ${table.implEntitySimpleName} {
     }
   }
 
-  private static final class Entity extends $table.entitySimpleName {
+  private static final class Entity #if ($table.isInterface)implements#{else}extends#end $table.qualifiedEntityName {
     private static enum Action { NONE, INSERT, UPDATE, DELETE }
     
     private transient Table _table;

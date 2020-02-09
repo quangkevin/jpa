@@ -25,7 +25,8 @@ dependencies {
 
     implementation project(':core')
 
-    testAnnotationProcessor sourceSets.main.output,
+    testAnnotationProcessor project(':core'),
+	sourceSets.main.output,
 	'com.google.escapevelocity:escapevelocity:0.9.1',
         'com.google.googlejavaformat:google-java-format:1.7',
         'com.google.code.gson:gson:2.8.6'
@@ -50,7 +51,7 @@ test {
 task sample (type: JavaExec) {
     dependsOn 'compileTestJava'
 
-    main = 'Sample'
+    main = 'Test'
     classpath = sourceSets.test.runtimeClasspath
 }
 

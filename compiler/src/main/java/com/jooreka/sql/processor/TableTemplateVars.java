@@ -3,6 +3,8 @@ package com.jooreka.sql.processor;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.persistence.Entity;
 import javax.persistence.Table;
@@ -11,6 +13,8 @@ import java.util.stream.Collectors;
 
 public class TableTemplateVars {
   public static TableTemplateVars create(Entity entity, TypeElement element) {
+    validate(element);
+
     TableTemplateVars result = new TableTemplateVars();
     result.tableName = "".equals(entity.name()) ? null : entity.name();
     result.type = element;
@@ -23,6 +27,8 @@ public class TableTemplateVars {
   }
 
   public static TableTemplateVars create(Table table, TypeElement element) {
+    validate(element);
+    
     TableTemplateVars result = new TableTemplateVars();
 
     result.type = element;
@@ -54,6 +60,27 @@ public class TableTemplateVars {
     return result;
   }
 
+  private static void validate(TypeElement element) {
+    if (element.getKind() != ElementKind.CLASS && element.getKind() != ElementKind.INTERFACE) {
+      throw new InvalidEntityException(element, "Table entity is not a class or interface");
+    }
+
+    if (element.getModifiers().contains(Modifier.PRIVATE)) {
+      throw new InvalidEntityException(element, "Table entity cannot be private");
+    }
+
+    if (element.getKind() == ElementKind.CLASS) {
+      if (element.getModifiers().contains(Modifier.FINAL)) {
+	throw new InvalidEntityException(element, "Table entity class cannot be final");
+      }
+
+      if (!(element.getEnclosingElement() instanceof PackageElement)
+	  && !element.getModifiers().contains(Modifier.STATIC)) {
+	throw new InvalidEntityException(element, "Table entity inner class must be static");
+      }
+    }
+  }
+
   private String database;
   private String tableName;
   private Set<ColumnTemplateVars> columns = new LinkedHashSet<>();
@@ -69,17 +96,40 @@ public class TableTemplateVars {
     this.columns.addAll(proto.columns);
     this.indices.addAll(proto.indices);
   }
-  
+
+  public boolean getIsInterface() { return type.getKind() == ElementKind.INTERFACE; }
+
   public TypeElement getType() { return type; }
-  public String getQualifiedEntityName() { return getType().getQualifiedName().toString(); }
-  public String getEntitySimpleName() { return getType().getSimpleName().toString(); }
+  
+  public String getPackage() {
+    Element pkg = type.getEnclosingElement();
+
+    while (!(pkg instanceof PackageElement)) {
+      pkg = pkg.getEnclosingElement();
+    }
+    
+    return ((type.getEnclosingElement() instanceof PackageElement
+	     && !((PackageElement) type.getEnclosingElement()).isUnnamed())
+	    ? type.getEnclosingElement().toString()
+	    : null);
+  }
+  
+  public String getQualifiedEntityName() { return type.getQualifiedName().toString(); }
 
   public String getImplEntitySimpleName() {
-    return getEntitySimpleName() + "$Impl";
+    String pkg = getPackage();
+
+    String simpleName = (pkg == null
+			 ? getQualifiedEntityName()
+			 : getQualifiedEntityName().substring(pkg.length() + 1));
+
+    return simpleName.replace(".", "$") + "$Impl";
   }
   
   public String getImplEntityQualifiedName() {
-    return getType().getEnclosingElement() + "." + getImplEntitySimpleName();
+    String pkg = getPackage();
+    
+    return (null == pkg ? "" : (pkg + ".")) + getImplEntitySimpleName();
   }
 
   public int getIdColumnIndex() {

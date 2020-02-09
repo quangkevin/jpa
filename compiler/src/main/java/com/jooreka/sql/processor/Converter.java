@@ -20,7 +20,7 @@ class Converter {
       .map(x -> (x.length() < 2
 		 ? x.toUpperCase()
 		 : (x.substring(0, 1).toUpperCase() + x.substring(1))))
-      .collect(Collectors.joining(","));
+      .collect(Collectors.joining(""));
 
     return val.substring(0, 1).toLowerCase() + val.substring(1);
   }

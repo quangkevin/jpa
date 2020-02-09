@@ -59,7 +59,7 @@ public class BasicSqlResultSet implements SqlResultSet {
   }
 
   @Override
-  public Optional<Integer> nextInt() {
+  public Optional<Integer> nextInteger() {
     try {
       int result = rs.getInt(++columnIndex);
       return rs.wasNull() ? Optional.empty() : Optional.of(result);

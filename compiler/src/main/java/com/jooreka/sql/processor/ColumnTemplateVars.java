@@ -27,6 +27,9 @@ public class ColumnTemplateVars {
     if (element.getParameters().size() == 1) {
       result.setter = element;
       element.getParameters().get(0).asType();
+      
+    } else if (1 < element.getParameters().size()) {
+      throw new InvalidEntityException(element, "Looks like a setter but it has more than 1 parameter");
     }
 
     if (result.columnName == null) {
@@ -74,7 +77,17 @@ public class ColumnTemplateVars {
     if (length == null) length = column.length;
     if (!isId) isId = column.isId;
     if (setter == null) setter = column.setter;
-    if (getter == null) getter = column.getter;    
+    if (getter == null) getter = column.getter;
+
+    if (getter != null
+	&& setter != null
+	&& !getter.getReturnType().equals(setter.getParameters().get(0).asType())) {
+      throw new InvalidEntityException(setter, "Getter %s is not compatibile with setter %s [%s != %s]",
+				       getter,
+				       setter,
+				       getter.getReturnType(),
+				       setter.getParameters().get(0).asType());
+    }
   }
 
   public String getFieldName() {
@@ -90,7 +103,9 @@ public class ColumnTemplateVars {
   }
 
   public String getSqlRowSetMethodName() {
-    return "set" + getSqlTypeName();
+    String typeName = getSqlTypeName();
+    
+    return "set" + ("Integer".equals(typeName) ? "Int" : typeName);
   }
 
   public String getSqlType() {
