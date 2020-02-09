@@ -8,3 +8,6 @@
  */
 
 rootProject.name = 'jpa'
+
+include 'core'
+include 'compiler'
