@@ -11,3 +11,4 @@ rootProject.name = 'jpa'
 
 include 'core'
 include 'compiler'
+include 'mysql'

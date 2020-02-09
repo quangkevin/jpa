@@ -17,7 +17,7 @@ tasks ::
 	$(GRADLE) tasks
 
 build ::
-	$(GRADLE) :compiler:sample
+	$(GRADLE) build
 
 
 
