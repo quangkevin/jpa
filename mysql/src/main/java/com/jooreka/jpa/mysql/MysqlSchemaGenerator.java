@@ -16,28 +16,22 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MysqlSchemaGenerator {
-  private List<Function<SqlSession, SqlTable<?>>> tableSuppliers;
-
-  public MysqlSchemaGenerator(Function<SqlSession, SqlTable<?>>... suppliers) {
-    this.tableSuppliers = Arrays.asList(suppliers);
-  }
-
-  public String generate() {
+  public String generate(List<Function<SqlSession, SqlTable<?>>> suppliers) {
     SchemaSession session = new SchemaSession();
 
-    return tableSuppliers
-        .stream()
-        .map(supplier -> supplier.apply(session))
-        .map(table -> createTable(table))
-        .collect(Collectors.joining("\n\n"));
+    return suppliers
+      .stream()
+      .map(supplier -> supplier.apply(session))
+      .map(table -> createTable(table))
+      .collect(Collectors.joining("\n\n"));
   }
 
   public String createTable(SqlTable<?> table) {
     StringBuilder buf = new StringBuilder();
     buf
-        .append("CREATE TABLE ")
-        .append(table.getTableName())
-        .append(" (");
+      .append("CREATE TABLE ")
+      .append(table.getTableName())
+      .append(" (");
 
     boolean first = true;
 
@@ -52,11 +46,11 @@ public class MysqlSchemaGenerator {
       if (!first) buf.append(",\n");
 
       buf
-          .append(" INDEX ")
-          .append(index)
-          .append(" (")
-          .append(index.getColumnNames().stream().collect(Collectors.joining(", ")))
-          .append(")");
+        .append(" INDEX ")
+        .append(index.getName())
+        .append(" (")
+        .append(index.getColumnNames().stream().collect(Collectors.joining(", ")))
+        .append(")");
 
       if (index.isUnique()) {
         buf.append(" UNIQUE");
@@ -65,7 +59,7 @@ public class MysqlSchemaGenerator {
       first = false;
     }
 
-    buf.append("\n) engine=InnoDb");
+    buf.append("\n) engine=InnoDb;");
 
     return buf.toString();
   }

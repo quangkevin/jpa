@@ -13,4 +13,9 @@ allprojects {
 subprojects {
     group = 'com.jooreka.jpa'    
     version = '1.0'
+
+    tasks.withType(JavaCompile) {
+	options.compilerArgs << '-Xlint:unchecked'
+	options.deprecation = true
+    }
 }

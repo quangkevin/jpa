@@ -11,7 +11,7 @@ jar ::
 	$(GRADLE) jar
 
 publish ::
-	$(GRADLE) publishToMavenLocal
+	$(GRADLE) publishToMavenLocal 
 
 tasks ::
 	$(GRADLE) tasks
