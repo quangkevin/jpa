@@ -1,12 +1,37 @@
 package com.jooreka.jpa.mysql;
 
 import com.jooreka.sql.SqlColumn;
+import com.jooreka.sql.SqlConfig;
+import com.jooreka.sql.SqlConnectionSession;
+import com.jooreka.sql.SqlEntity;
 import com.jooreka.sql.SqlIndex;
+import com.jooreka.sql.SqlSequence;
+import com.jooreka.sql.SqlSession;
 import com.jooreka.sql.SqlTable;
 
+import java.sql.Connection;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MysqlSchemaGenerator {
+  private List<Function<SqlSession, SqlTable<?>>> tableSuppliers;
+
+  public MysqlSchemaGenerator(Function<SqlSession, SqlTable<?>>... suppliers) {
+    this.tableSuppliers = Arrays.asList(suppliers);
+  }
+
+  public String generate() {
+    SchemaSession session = new SchemaSession();
+
+    return tableSuppliers
+        .stream()
+        .map(supplier -> supplier.apply(session))
+        .map(table -> createTable(table))
+        .collect(Collectors.joining("\n\n"));
+  }
+
   public String createTable(SqlTable<?> table) {
     StringBuilder buf = new StringBuilder();
     buf
@@ -43,5 +68,94 @@ public class MysqlSchemaGenerator {
     buf.append("\n) engine=InnoDb");
 
     return buf.toString();
+  }
+
+
+  private static class SchemaSession implements SqlSession {
+    @Override
+    public SqlConfig getConfig() {
+      return new SchemaConfig();
+    }
+
+    @Override
+    public SqlConnectionSession getConnectionSession(String s) {
+      return new SchemaSqlConnectionSession(this);
+    }
+
+    @Override
+    public void keepAlive() {
+    }
+
+    @Override
+    public void save() {
+    }
+
+    @Override
+    public void clear() {
+    }
+
+    @Override
+    public void close() {
+    }
+  }
+
+  private static class SchemaConfig implements SqlConfig {
+    @Override
+    public Connection createConnection(String s) {
+      return null;
+    }
+
+    @Override
+    public SqlSequence createSequence(String s, String s1) {
+      return null;
+    }
+  }
+
+  private static class SchemaSqlConnectionSession implements SqlConnectionSession {
+    private SqlSession session;
+
+    private SchemaSqlConnectionSession(SqlSession session) {
+      this.session = session;
+    }
+
+    @Override
+    public SqlSession getSession() {
+      return session;
+    }
+
+    @Override
+    public Connection getConnection() {
+      return null;
+    }
+
+    @Override
+    public <T extends SqlTable<? extends SqlEntity>> T getTable(Class<T> tableClass, Function<SqlConnectionSession, T> supplier) {
+      return supplier.apply(this);
+    }
+
+    @Override
+    public void addCommand(Runnable command) {
+    }
+
+    @Override
+    public boolean isAlive() {
+      return false;
+    }
+
+    @Override
+    public void keepAlive() {
+    }
+
+    @Override
+    public void save() {
+    }
+
+    @Override
+    public void clear() {
+    }
+
+    @Override
+    public void close() {
+    }
   }
 }

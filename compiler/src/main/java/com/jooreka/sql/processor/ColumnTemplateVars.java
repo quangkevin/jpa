@@ -1,6 +1,7 @@
 package com.jooreka.sql.processor;
 
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.persistence.Column;
@@ -8,6 +9,8 @@ import javax.persistence.Id;
 
 public class ColumnTemplateVars {
   public static ColumnTemplateVars create(Column column, ExecutableElement element) {
+    validate(element);
+    
     ColumnTemplateVars result = new ColumnTemplateVars();
 
     result.columnName = "".equals(column.name()) ? null : column.name();
@@ -28,9 +31,7 @@ public class ColumnTemplateVars {
       result.setter = element;
       element.getParameters().get(0).asType();
       
-    } else if (1 < element.getParameters().size()) {
-      throw new InvalidEntityException(element, "Looks like a setter but it has more than 1 parameter");
-    }
+    } 
 
     if (result.columnName == null) {
       if (result.getter != null) {
@@ -48,6 +49,24 @@ public class ColumnTemplateVars {
     result.fieldName = Converter.snakeCaseToCamelCase(result.columnName);
 
     return result;
+  }
+
+  private static void validate(ExecutableElement element) {
+    if (element.getModifiers().contains(Modifier.PRIVATE)) {
+      throw new InvalidEntityException(element, "Column method must not be private");
+    }
+
+    if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
+      throw new InvalidEntityException(element, "Column method must be abstract");
+    }
+
+    if (element.getModifiers().contains(Modifier.STATIC)) {
+      throw new InvalidEntityException(element, "Column method must not be static");
+    }
+    
+    if (1 < element.getParameters().size()) {
+      throw new InvalidEntityException(element, "Looks like a setter but it has more than 1 parameter");
+    }
   }
 
   private String fieldName;
@@ -125,6 +144,7 @@ public class ColumnTemplateVars {
     case "BYTE": return "Types.TINYINT";
     case "FLOAT": return "Types.FLOAT";
     case "DOUBLE": return "Types.DOUBLE";
+    case "INTEGER": return "Types.INTEGER";      
     case "INT": return "Types.INTEGER";
     case "LONG": return "Types.BIGINT";
     case "ARRAY": return "Types.BLOB";
@@ -205,7 +225,7 @@ public class ColumnTemplateVars {
     case BYTE: 
     case FLOAT:
     case DOUBLE:
-    case INT: 
+    case INT:
     case LONG:
       type = javaType.getKind().name().toLowerCase();
       type = type.substring(0, 1).toUpperCase() + type.substring(1);

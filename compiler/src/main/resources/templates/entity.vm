@@ -60,7 +60,9 @@ final class ${table.implEntitySimpleName} {
 									          #if ($foreach.index < $table.columns.size() - 1),#end#end));
 
     private List<SqlIndex> _indices = Collections.unmodifiableList(Arrays.asList(#foreach ($index in $table.indices)
-    	    		   	      				                 new BasicSqlIndex($index.name, $index.columns, $index.isUnique)
+    	    		   	      				                 new BasicSqlIndex("${index.name}",
+										                   Arrays.asList(#foreach ($column in $index.columns)"$column"#if ($foreach.index < $index.columns.size() - 1),#end#end),
+												   $index.isUnique)
 										 #if ($foreach.index < $table.indices.size() - 1),#end#end));
 
     Table(SqlConnectionSession session) {

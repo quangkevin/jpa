@@ -4,29 +4,34 @@ import javax.persistence.Index;
 import javax.persistence.UniqueConstraint;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
-class IndexTemplateVars {
+public class IndexTemplateVars {
   public static IndexTemplateVars create(Index index) {
-    IndexTemplateVars result = new IndexTemplateVars();
-    result.name = index.name();
-    result.columns = Arrays.asList(index.columnList().split(","));
-
-    return result;
+    return new IndexTemplateVars(index.name(),
+				 Arrays.asList(index.columnList().split(",")),
+				 index.unique());
   }
 
   public static IndexTemplateVars create(UniqueConstraint unique) {
-    IndexTemplateVars result = new IndexTemplateVars();
-    result.name = unique.name();
-    result.columns = Arrays.asList(unique.columnNames());
-    result.unique = true;
-
-    return result;
+    return new IndexTemplateVars(unique.name(), 
+				 Arrays.asList(unique.columnNames()),
+				 true);
   }
   
   private String name;
   private List<String> columns;
+  private boolean unique;  
 
-  private IndexTemplateVars() {}
+  private IndexTemplateVars(String name, List<String> columns, boolean unique) {
+    if (name == null || name.length() == 0) {
+      name = columns.stream().collect(Collectors.joining("_"));
+    }
+
+    this.name = name;
+    this.columns = columns;
+    this.unique = unique;
+  }
 
   public String getName() {
     return name;
@@ -36,11 +41,9 @@ class IndexTemplateVars {
     return columns;
   }
 
-  public boolean isUnique() {
+  public boolean getIsUnique() {
     return unique;
   }
-
-  private boolean unique;
 
   @Override public boolean equals(Object o) {
     return (o instanceof IndexTemplateVars
