@@ -8,7 +8,6 @@ import com.jooreka.sql.SqlIndex;
 import com.jooreka.sql.SqlSequence;
 import com.jooreka.sql.SqlSession;
 import com.jooreka.sql.SqlTable;
-import com.jooreka.sql.SqlTableImplementations;
 
 import java.sql.Array;
 import java.sql.Connection;
@@ -18,15 +17,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MysqlSchemaGenerator {
-  //public String generate(Class<? extends SqlEntity>... entityClasses) {
-  //  SchemaSession session = new SchemaSession();
-  //
-  //  return Arrays.asList(entityClasses)
-  //    .stream()
-  //    .map(session::getTable)
-  //    .map(table -> createTable(table))
-  //    .collect(Collectors.joining("\n\n"));
-  //}
+  public String generate(List<SqlTable<?>> tables) {
+    SchemaSession session = new SchemaSession();
+  
+    return tables
+      .stream()
+      .map(table -> createTable(table))
+      .collect(Collectors.joining("\n\n"));
+  }
 
   public String createTable(SqlTable<?> table) {
     StringBuilder buf = new StringBuilder();
@@ -68,8 +66,6 @@ public class MysqlSchemaGenerator {
 
 
   private static class SchemaSession implements SqlSession {
-    private SqlTableImplementations tableImplementations = new SqlTableImplementations();
-
     @Override
     public SqlConfig getConfig() {
       return new SchemaConfig();
@@ -78,11 +74,6 @@ public class MysqlSchemaGenerator {
     @Override
     public SqlConnectionSession getConnectionSession(String databaseName) {
       return new SchemaSqlConnectionSession(this);
-    }
-
-    @Override
-    public <T extends SqlEntity> SqlTable<T> getTable(Class<T> entityClass) {
-      return tableImplementations.implement(entityClass).apply(this);
     }
 
     @Override

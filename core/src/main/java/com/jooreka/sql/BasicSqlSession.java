@@ -9,8 +9,7 @@ import java.util.function.Consumer;
 public final class BasicSqlSession implements SqlSession {
   private final SqlConfig config;
   private final Map<String, SqlConnectionSession> connectionSessionMap;
-  private final SqlTableImplementations tableImplementations = new SqlTableImplementations();
-    
+
   public BasicSqlSession(SqlConfig config) {
     this.config = config;
     this.connectionSessionMap = new HashMap<>();
@@ -21,11 +20,6 @@ public final class BasicSqlSession implements SqlSession {
   @Override
   public SqlConnectionSession getConnectionSession(String databaseName) {
     return connectionSessionMap.computeIfAbsent(databaseName, (db) -> new BasicSqlConnectionSession(this, db));
-  }
-
-  @Override
-  public <T extends SqlEntity> SqlTable<T> getTable(Class<T> entityClass) {
-    return tableImplementations.implement(entityClass).apply(this);
   }
 
   @Override
