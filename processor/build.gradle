@@ -19,13 +19,22 @@ repositories {
 }
 
 dependencies {
-    api project(':core'),
-	'com.zaxxer:HikariCP:3.4.1',
-        'mysql:mysql-connector-java:8.0.18'
+    api 'com.google.escapevelocity:escapevelocity:0.9.1',
+	'com.google.googlejavaformat:google-java-format:1.7',
+	'com.google.code.gson:gson:2.8.6'
 
-    compileOnly project(':processor')
+    implementation project(':core')
+
+    testAnnotationProcessor project(':core'),
+	sourceSets.main.output,
+	'com.google.escapevelocity:escapevelocity:0.9.1',
+        'com.google.googlejavaformat:google-java-format:1.7',
+        'com.google.code.gson:gson:2.8.6'
     
-    testAnnotationProcessor project(':processor')
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.5.2',
+        'com.zaxxer:HikariCP:3.4.1',
+        'mysql:mysql-connector-java:8.0.18'    
 }
 
 test {
@@ -41,16 +50,8 @@ test {
 
 publishing {
     publications {
-	mysql(MavenPublication) {
+	processor(MavenPublication) {
 	    from components.java
 	}
     }
-}
-
-
-task sample (type: JavaExec) {
-    dependsOn 'compileTestJava'
-
-    main = 'Test'
-    classpath = sourceSets.test.runtimeClasspath
 }

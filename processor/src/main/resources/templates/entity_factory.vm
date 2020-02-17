@@ -1,0 +1,43 @@
+#if ($vars.packageName)
+package ${vars.packageName};
+#end
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+import com.jooreka.sql.SqlEntity;
+import com.jooreka.sql.SqlEntityFactory;
+import com.jooreka.sql.SqlException;
+import com.jooreka.sql.SqlSession;
+import com.jooreka.sql.SqlTable;
+
+@SuppressWarnings("unchecked")
+final class ${vars.implClassName} #if ($vars.isInterface)implements $vars.qualifiedClassName, SqlEntityFactory#{else}extends $vars.qualifiedClassName implements SqlEntityFactory#end {
+  private static final Map<Object, Function<SqlSession, ?>> ENTITY_MAP = new HashMap<>();
+  private static final Map<Object, Function<SqlSession, ?>> SCHEMA_MAP = new HashMap<>();
+
+  static {
+    #foreach ($entity in $vars.entityTemplateVars)
+      ENTITY_MAP.put(${entity.qualifiedEntityClassName}.class, ${entity.qualifiedOuterClassName}.Table::getOrCreate);
+      #if ($entity.isMain) SCHEMA_MAP.put(${entity.qualifiedEntityClassName}.class, ${entity.qualifiedOuterClassName}.Table::getOrCreate);#end
+    #end
+  }
+    
+  private final SqlSession session;
+  
+  public ${vars.implClassName}(SqlSession session) {
+    this.session = session;
+  }
+
+  @Override
+  public <T extends SqlEntity> SqlTable<T> getTable(Class<T> entityClass) {
+    Function<SqlSession, SqlTable<T>> supplier = (Function<SqlSession, SqlTable<T>>) ENTITY_MAP.get(entityClass);
+
+    if (supplier == null) {
+      throw new SqlException("Table not found for Entity: " + entityClass);
+    }
+
+    return supplier.apply(session);
+  }
+}
