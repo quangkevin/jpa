@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
@@ -145,7 +146,7 @@ public class EntityProcessor extends AbstractProcessor {
   private EntityTemplateVars processEntity(Element element) {
     TypeElement classElement = (TypeElement) element;
     Table table = classElement.getAnnotation(Table.class);
-    EntityTemplateVars tableTemplateVars = EntityTemplateVars.create(table, classElement);
+    EntityTemplateVars entityTemplateVars = EntityTemplateVars.create(table, classElement);
 
     for (Element enclosing : element.getEnclosedElements()) {
       Column column = enclosing.getAnnotation(Column.class);
@@ -154,8 +155,8 @@ public class EntityProcessor extends AbstractProcessor {
         errorReporter.err(enclosing, "@Column can only be used on abstract method");
 
       } else if (column == null
-          && enclosing.getKind() == ElementKind.METHOD
-          && enclosing.getModifiers().contains(Modifier.ABSTRACT)) {
+		 && enclosing.getKind() == ElementKind.METHOD
+		 && enclosing.getModifiers().contains(Modifier.ABSTRACT)) {
         column = defaultColumn;
       }
 
@@ -163,8 +164,10 @@ public class EntityProcessor extends AbstractProcessor {
         ExecutableElement methodElement = (ExecutableElement) enclosing;
 
         try {
-          ColumnTemplateVars columnTemplateVars = ColumnTemplateVars.create(column, methodElement);
-          Optional<ColumnTemplateVars> existingColumnProto = (tableTemplateVars
+          ColumnTemplateVars columnTemplateVars
+	    = ColumnTemplateVars.create(entityTemplateVars, column, methodElement);
+	  
+          Optional<ColumnTemplateVars> existingColumnProto = (entityTemplateVars
               .getColumns()
               .stream()
               .filter(x -> x.getColumnName().equals(columnTemplateVars.getColumnName()))
@@ -173,7 +176,7 @@ public class EntityProcessor extends AbstractProcessor {
             existingColumnProto.get().merge(columnTemplateVars);
 
           } else {
-            tableTemplateVars.getColumns().add(columnTemplateVars);
+            entityTemplateVars.getColumns().add(columnTemplateVars);
           }
         } catch (InvalidEntityException e) {
           errorReporter.err(enclosing, e.getMessage());
@@ -181,11 +184,11 @@ public class EntityProcessor extends AbstractProcessor {
       }
     }
 
-    if (tableTemplateVars.getColumns().isEmpty()) {
+    if (entityTemplateVars.getColumns().isEmpty()) {
       throw new InvalidEntityException(element, "Missing columns");
     }
 
-    return tableTemplateVars;
+    return entityTemplateVars;
   }
 
   private Template parseTemplate(String resourceName) {

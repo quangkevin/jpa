@@ -4,6 +4,7 @@ import com.jooreka.sql.SqlColumn;
 import com.jooreka.sql.SqlConfig;
 import com.jooreka.sql.SqlConnectionSession;
 import com.jooreka.sql.SqlEntity;
+import com.jooreka.sql.SqlEntityFactory;
 import com.jooreka.sql.SqlIndex;
 import com.jooreka.sql.SqlSequence;
 import com.jooreka.sql.SqlSession;
@@ -17,16 +18,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class MysqlSchemaGenerator {
-  public String generate(List<SqlTable<?>> tables) {
-    SchemaSession session = new SchemaSession();
-  
-    return tables
-      .stream()
-      .map(table -> createTable(table))
-      .collect(Collectors.joining("\n\n"));
+  public static String generate(Function<SqlSession, SqlEntityFactory> factoryProvider) {
+    return factoryProvider.apply(new SchemaSession()).getSchemaDefinition(MysqlSchemaGenerator::createTable);
   }
-
-  public String createTable(SqlTable<?> table) {
+  
+  public static String createTable(SqlTable<?> table) {
     StringBuilder buf = new StringBuilder();
     buf
       .append("CREATE TABLE ")
@@ -61,9 +57,18 @@ public class MysqlSchemaGenerator {
 
     buf.append("\n) engine=InnoDb;");
 
+    buf
+      .append("\n\nCREATE TABLE ")
+      .append(table.getTableName()).append("_seq (")
+      .append("\n id BIGINT PRIMARY KEY NOT NULL")
+      .append("\n) engine = InnoDb;")
+      
+      .append("\n\ninsert into ")
+      .append(table.getTableName()).append("_seq (id) VALUES (1);")
+      ;
+
     return buf.toString();
   }
-
 
   private static class SchemaSession implements SqlSession {
     @Override

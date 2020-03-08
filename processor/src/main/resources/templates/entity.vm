@@ -34,8 +34,8 @@ import com.jooreka.sql.SqlSession;
 import com.jooreka.sql.SqlStatementBuilder;
 import com.jooreka.sql.SqlTable;
 
-final class ${vars.outerClassName} {
-  static final class Table extends AbstractSqlTable<$vars.qualifiedEntityClassName> {
+public final class ${vars.outerClassName} {
+  public static final class Table extends AbstractSqlTable<$vars.qualifiedEntityClassName> {
     public static Table getOrCreate(SqlSession session) {
       return session.getConnectionSession(#quot($vars.database)).getTable(Table.class, Table::new);
     }

@@ -3,14 +3,17 @@ package com.jooreka.sql.processor.internal;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.jooreka.sql.processor.Column;
 import com.jooreka.sql.processor.Id;
 
 public class ColumnTemplateVars {
-  public static ColumnTemplateVars create(Column column, ExecutableElement element) {
-    validate(element);
+  public static ColumnTemplateVars create(EntityTemplateVars entityTemplateVars,
+					  Column column,
+					  ExecutableElement element) {
+    validate(entityTemplateVars, element);
     
     ColumnTemplateVars result = new ColumnTemplateVars();
 
@@ -22,6 +25,7 @@ public class ColumnTemplateVars {
     result.updatable = column.updatable();
     result.columnDefinition = "".equals(column.columnDefinition()) ? null : column.columnDefinition();
     result.length = column.length();
+    result.references = "".equals(column.references()) ? null : column.references();
 
     if (element.getParameters().isEmpty()) {
       result.getter = element;
@@ -30,8 +34,7 @@ public class ColumnTemplateVars {
 
     if (element.getParameters().size() == 1) {
       result.setter = element;
-      element.getParameters().get(0).asType();
-      
+      result.javaType = element.getParameters().get(0).asType();
     } 
 
     if (result.columnName == null) {
@@ -52,7 +55,7 @@ public class ColumnTemplateVars {
     return result;
   }
 
-  private static void validate(ExecutableElement element) {
+  private static void validate(EntityTemplateVars entityTemplateVars, ExecutableElement element) {
     if (element.getModifiers().contains(Modifier.PRIVATE)) {
       throw new InvalidEntityException(element, "Column method must not be private");
     }
@@ -68,19 +71,31 @@ public class ColumnTemplateVars {
     if (1 < element.getParameters().size()) {
       throw new InvalidEntityException(element, "Looks like a setter but it has more than 1 parameter");
     }
+
+    if (element.getParameters().size() == 1) {
+      ;TypeMirror returnType = element.getReturnType();
+
+      if (returnType.getKind() != TypeKind.VOID
+	  && (returnType.getKind() != TypeKind.DECLARED
+	      || !((DeclaredType) returnType).asElement().equals(entityTemplateVars.getType()))) {
+	throw new InvalidEntityException(element,
+					 "Return type must be 'void' or '%s'",
+					 entityTemplateVars.getType().getQualifiedName());
+      }
+    }
   }
 
   private String fieldName;
   private String columnName;
-  private Boolean unique;
-  private Boolean nullable;
-  private Boolean insertable;
-  private Boolean updatable;
+  private boolean unique;
+  private boolean nullable;
+  private boolean insertable;
+  private boolean updatable;
+  private boolean isId;  
+  private String references;
 
   private String columnDefinition;
   private Integer length;
-
-  private boolean isId;
 
   private TypeMirror javaType;
   private ExecutableElement getter;
@@ -89,10 +104,10 @@ public class ColumnTemplateVars {
   private ColumnTemplateVars() {}
 
   public void merge(ColumnTemplateVars column) {
-    if (unique == null) unique = column.unique;
-    if (nullable == null || nullable) nullable = column.nullable;
-    if (insertable == null || insertable) insertable = column.insertable;
-    if (updatable == null || updatable) updatable = column.updatable;
+    if (column.unique) unique = column.unique;
+    if (column.nullable) nullable = column.nullable;
+    if (!column.insertable) insertable = column.insertable;
+    if (!column.updatable) updatable = column.updatable;
     if (columnDefinition == null) columnDefinition = column.columnDefinition;
     if (length == null) length = column.length;
     if (!isId) isId = column.isId;
@@ -186,6 +201,10 @@ public class ColumnTemplateVars {
 
       if (!getNullable()) {
 	result += " NOT NULL";
+      }
+
+      if (references != null) {
+	result += " REFERENCES " + references;
       }
     }
 

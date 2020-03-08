@@ -2,9 +2,12 @@
 package ${vars.packageName};
 #end
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.jooreka.sql.SqlEntity;
 import com.jooreka.sql.SqlEntityFactory;
@@ -15,12 +18,12 @@ import com.jooreka.sql.SqlTable;
 @SuppressWarnings("unchecked")
 final class ${vars.implClassName} #if ($vars.isInterface)implements $vars.qualifiedClassName, SqlEntityFactory#{else}extends $vars.qualifiedClassName implements SqlEntityFactory#end {
   private static final Map<Object, Function<SqlSession, ?>> ENTITY_MAP = new HashMap<>();
-  private static final Map<Object, Function<SqlSession, ?>> SCHEMA_MAP = new HashMap<>();
+  private static final List<Class<? extends SqlEntity>> TABLE_ENTITY_CLASSES = new ArrayList<>();
 
   static {
     #foreach ($entity in $vars.entityTemplateVars)
       ENTITY_MAP.put(${entity.qualifiedEntityClassName}.class, ${entity.qualifiedOuterClassName}.Table::getOrCreate);
-      #if ($entity.isMain) SCHEMA_MAP.put(${entity.qualifiedEntityClassName}.class, ${entity.qualifiedOuterClassName}.Table::getOrCreate);#end
+      #if ($entity.isMain)TABLE_ENTITY_CLASSES.add(${entity.qualifiedEntityClassName}.class);#end
     #end
   }
     
@@ -39,5 +42,13 @@ final class ${vars.implClassName} #if ($vars.isInterface)implements $vars.qualif
     }
 
     return supplier.apply(session);
+  }
+
+  @Override
+  public String getSchemaDefinition(Function<SqlTable<?>, String> tableToDefinition) {
+    return TABLE_ENTITY_CLASSES
+     .stream()
+     .map(x -> tableToDefinition.apply(getTable(x)))
+     .collect(Collectors.joining("\n\n"));
   }
 }

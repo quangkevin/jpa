@@ -62,6 +62,10 @@ public class BasicSqlStatement implements SqlStatement {
     for (int i = 0; i < bindings.size(); ++i) {
       Object value = bindings.get(i);
 
+      if (value instanceof SqlBindingValue) {
+	value = ((SqlBindingValue) value).getSqlBindingValue();
+      }
+
       if (value == null) {
         statement.setNull(i + 1, Types.NULL);
 
