@@ -24,7 +24,7 @@ dependencies {
         'mysql:mysql-connector-java:8.0.18'
 
     compileOnly project(':processor')
-    
+
     testAnnotationProcessor project(':processor')
 }
 

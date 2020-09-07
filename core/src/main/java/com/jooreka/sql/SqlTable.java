@@ -16,15 +16,15 @@ public interface SqlTable<T extends SqlEntity> {
   public void clear();
 
   public T getEntity(Object id);
-  public T getEntityWhere(SqlStatement whereClause);  
-  public List<T> getEntitiesFrom(SqlStatement fromClause);
-  public List<T> getEntitiesFrom(String entityTableAlias, SqlStatement fromClause);
-  public List<T> getEntitiesWhere(SqlStatement whereClause);  
-  public int countWhere(SqlStatement whereClause);
-  public boolean existsWhere(SqlStatement whereClause);
-  public int count(SqlStatement sql);
-  public boolean exists(SqlStatement sql);
-  
-  public void query(SqlStatement sql, Consumer<SqlResultSet> rowConsumer);
-  public <R> R query(SqlStatement sql, Function<SqlResultSet, R> mapper);
+  public T getEntityWhere(Sql whereClause);
+  public List<T> getEntitiesFrom(Sql fromClause);
+  public List<T> getEntitiesFrom(String entityTableAlias, Sql fromClause);
+  public List<T> getEntitiesWhere(Sql whereClause);
+  public int countWhere(Sql whereClause);
+  public boolean existsWhere(Sql whereClause);
+  public int count(Sql sql);
+  public boolean exists(Sql sql);
+
+  public void query(Sql sql, Consumer<SqlResultSet> rowConsumer);
+  public <R> R query(Sql sql, Function<SqlResultSet, R> mapper);
 }

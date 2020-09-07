@@ -5,40 +5,40 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
 
-public class BasicSqlStatement implements SqlStatement {
-  private final String sql;
+public class BasicSql implements Sql {
+  private final String template;
   private final List<?> bindings;
 
-  public BasicSqlStatement(String sql, List<?> bindings) {
-    this.sql = sql;
+  public BasicSql(String template, List<?> bindings) {
+    this.template = template;
     this.bindings = bindings;
   }
 
-  @Override public String getSql() { return sql; }
+  @Override public String getTemplate() { return template; }
   @Override public List<?> getBindings() { return bindings; }
 
   @Override public String toString() {
-    if (bindings.isEmpty()) return sql;
+    if (bindings.isEmpty()) return template;
 
     StringBuilder buf = new StringBuilder();
 
     int beginIndex = 0;
 
     for (Object val : bindings) {
-      int endIndex = sql.indexOf('?', beginIndex);
+      int endIndex = template.indexOf('?', beginIndex);
 
       if (endIndex == -1) {
-        throw new SqlException("Bindings mismatched (SQL: %s) (Bindings: %d)", sql, bindings.size());
+        throw new SqlException("Bindings mismatched (Template: %s) (Bindings: %d)", template, bindings.size());
       }
 
-      buf.append(sql.substring(beginIndex, endIndex));
+      buf.append(template.substring(beginIndex, endIndex));
       buf.append(String.valueOf(val));
 
-      beginIndex++;
+      beginIndex = endIndex + 1;
     }
 
-    if ((beginIndex + 1) < sql.length()) {
-      buf.append(sql.substring(beginIndex));
+    if ((beginIndex + 1) < template.length()) {
+      buf.append(template.substring(beginIndex));
     }
 
     return buf.toString();
@@ -46,7 +46,7 @@ public class BasicSqlStatement implements SqlStatement {
 
   @Override public PreparedStatement toPreparedStatement(SqlConnectionSession connectionSession) {
     try {
-      PreparedStatement statement = connectionSession.getConnection().prepareStatement(getSql());
+      PreparedStatement statement = connectionSession.getConnection().prepareStatement(getTemplate());
       bind(statement);
 
       return statement;

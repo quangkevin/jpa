@@ -2,7 +2,18 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/jpa.iml" filepath="$PROJECT_DIR$/.idea/jpa.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jpa.iml" filepath="$PROJECT_DIR$/.idea/modules/jpa.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/jpa.core.iml" filepath="$PROJECT_DIR$/.idea/modules/core/jpa.core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/jpa.core.main.iml" filepath="$PROJECT_DIR$/.idea/modules/core/jpa.core.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/jpa.core.test.iml" filepath="$PROJECT_DIR$/.idea/modules/core/jpa.core.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jpa.main.iml" filepath="$PROJECT_DIR$/.idea/modules/jpa.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.iml" filepath="$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.main.iml" filepath="$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.test.iml" filepath="$PROJECT_DIR$/.idea/modules/mysql/jpa.mysql.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/processor/jpa.processor.iml" filepath="$PROJECT_DIR$/.idea/modules/processor/jpa.processor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/processor/jpa.processor.main.iml" filepath="$PROJECT_DIR$/.idea/modules/processor/jpa.processor.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/processor/jpa.processor.test.iml" filepath="$PROJECT_DIR$/.idea/modules/processor/jpa.processor.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/jpa.test.iml" filepath="$PROJECT_DIR$/.idea/modules/jpa.test.iml" />
     </modules>
   </component>
 </project>

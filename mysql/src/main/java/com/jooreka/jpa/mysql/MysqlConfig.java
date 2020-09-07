@@ -28,6 +28,10 @@ public class MysqlConfig implements SqlConfig {
   public static class DataSourceBuilder {
     HikariConfig config = new HikariConfig();
 
+    public DataSourceBuilder() {
+      config.setAutoCommit(false);
+    }
+
     public DataSourceBuilder setUrl(String url) {
       config.setJdbcUrl(url);
       return this;
@@ -78,7 +82,7 @@ public class MysqlConfig implements SqlConfig {
 
     return SqlException.wrap(() -> ds.getConnection());
   }
-  
+
   public SqlSequence createSequence(String databaseName, String tableName) {
     return new MysqlSequence(this, databaseName, tableName);
   }

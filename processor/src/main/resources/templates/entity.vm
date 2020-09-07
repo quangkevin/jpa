@@ -44,7 +44,7 @@ public final class ${vars.outerClassName} {
     private Map<Object, Entity> _entities;
     private List<Entity> _dirtyList;
     private SqlSequence _sequence;
-    
+
     private List<SqlColumn> _columns = Collections.unmodifiableList(Arrays.asList(#foreach ($column in $vars.columns)
                                                                                   new BasicSqlColumn.Builder()
 										  .withName("$column.columnName")
@@ -93,14 +93,10 @@ public final class ${vars.outerClassName} {
 
     @Override public Entity reifyEntity(SqlResultSet rs) {
       #if ($vars.idColumn)
-      #if (0 < $vars.idColumnIndex)
       int columnIndex = rs.getColumnIndex();
       rs.setColumnIndex(columnIndex + $vars.idColumnIndex);
       Object id = rs.${vars.idColumn.sqlRowNextMethodName}();
       rs.setColumnIndex(columnIndex);
-      #else
-      Object id = rs.${vars.idColumn.sqlRowNextMethodName}().get();
-      #end
 
       Entity entity = _entities.get(id);
 
@@ -130,7 +126,7 @@ public final class ${vars.outerClassName} {
 	#else
  	entity.$column.fieldName = rs.${column.sqlRowNextMethodName}().get();
 	#end
-      #end 
+      #end
       #end
 
       return entity;
@@ -154,9 +150,9 @@ public final class ${vars.outerClassName} {
       flushDirtyList();
       clear();
     }
-    
+
     @Override public void clear() {
-      _dirtyList.clear();      
+      _dirtyList.clear();
       _entities.clear();
     }
 
@@ -169,7 +165,7 @@ public final class ${vars.outerClassName} {
 
     private void flushDirtyList() {
       if (_dirtyList.isEmpty()) return;
-      
+
       #if ($vars.idColumn)
 	_dirtyList.sort((a, b) -> a.${vars.idColumn.getterMethodName}().compareTo(b.${vars.idColumn.getterMethodName}()));
       #end
@@ -194,8 +190,15 @@ public final class ${vars.outerClassName} {
 	      #set ($counter = $foreach.index + 1)
 	      #if ($column.isId)
 		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.getterMethodName}());
-	      #else
+	      #elseif (!$column.nullable)
 		createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});
+              #else
+                if (entity.${column.fieldName} == null) {
+                  createStatement.setNull($counter, ${column.sqlType});
+                } else {
+                  createStatement.${column.sqlRowSetMethodName}($counter, entity.${column.fieldName});
+                }
+
    	      #end
 	    #end
 	    createStatement.executeUpdate();
@@ -215,11 +218,11 @@ public final class ${vars.outerClassName} {
 		#set ($counter = $counter + 1)##
 	      #end##
 	    #end##
-	    updateStatement.${vars.idColumn.sqlRowSetMethodName}($counter, entity.${vars.idColumn.getterMethodName}()); 
+	    updateStatement.${vars.idColumn.sqlRowSetMethodName}($counter, entity.${vars.idColumn.getterMethodName}());
 	    updateStatement.executeUpdate();
-	    
+
 	    break;
-	  
+
 	  case DELETE:
 	    if (deleteStatement == null) {
 	      deleteStatement = _session.getConnection().prepareStatement("$vars.deleteStatement");
@@ -227,24 +230,24 @@ public final class ${vars.outerClassName} {
 
 	    deleteStatement.${vars.idColumn.sqlRowSetMethodName}(1, entity.${vars.idColumn.getterMethodName}());
 	    deleteStatement.executeUpdate();
-	    
+
 	    break;
 	  }
-	}      
+	}
       } catch (SQLException e) {
 	throw new SqlException(e, "Fail to flush " + getDatabaseName() + "." + getTableName());
-	
+
       } finally {
 	try { if (createStatement != null) createStatement.close(); } catch (Exception e) {}
 	try { if (updateStatement != null) updateStatement.close(); } catch (Exception e) {}
-	try { if (deleteStatement != null) deleteStatement.close(); } catch (Exception e) {}	
+	try { if (deleteStatement != null) deleteStatement.close(); } catch (Exception e) {}
       }
     }
   }
 
   private static final class Entity #if ($vars.isInterface)implements#{else}extends#end $vars.qualifiedEntityClassName {
     private static enum Action { NONE, INSERT, UPDATE, DELETE }
-    
+
     private transient Table _table;
     private transient boolean _isPersisted;
     private transient boolean _isDirty;
@@ -264,7 +267,7 @@ public final class ${vars.outerClassName} {
 	    $column.fieldName = _idSupplier.get();
 	    _table._entities.put($column.fieldName, this);
 	  }
-	
+
 	#end
 	return $column.fieldName;
       }
@@ -281,15 +284,15 @@ public final class ${vars.outerClassName} {
 
 	  #if ("void" != $column.setterReturnType)return this;#end
 	}
-      #end	  
+      #end
     #end
 
     @Override public boolean isPersisted() { return _isPersisted; }
-    
+
     @Override public void flush() {
       #if ($vars.hasFlushMethod()) super.flush();#end
     }
-    
+
     @Override public void delete() {
       #if ($vars.hasDeleteMethod()) super.delete();#end
       _isDeleted = true;
@@ -309,4 +312,3 @@ public final class ${vars.outerClassName} {
     }
   }
 }
-

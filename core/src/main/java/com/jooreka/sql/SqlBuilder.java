@@ -6,52 +6,52 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SqlStatementBuilder {
-  private StringBuilder sqlString;
+public class SqlBuilder {
+  private StringBuilder template;
   private List<Object> bindings;
 
-  public SqlStatementBuilder() {
-    this.sqlString = new StringBuilder();
+  public SqlBuilder() {
+    this.template = new StringBuilder();
     this.bindings = new ArrayList<>();
   }
 
-  public SqlStatementBuilder add(String sql) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template) {
+    this.template.append(template);
 
     return this;
   }
 
-  public SqlStatementBuilder add(String sql, SqlStatement statement) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template, Sql statement) {
+    this.template.append(template);
     add(statement);
 
     return this;
-  }  
+  }
 
-  public SqlStatementBuilder add(String sql, Collection<?> bindings) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template, Collection<?> bindings) {
+    this.template.append(template);
     this.bindings.addAll(bindings);
 
     return this;
   }
 
-  public SqlStatementBuilder add(String sql, Object arg) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template, Object arg) {
+    this.template.append(template);
     this.bindings.add(arg);
 
     return this;
   }
 
-  public SqlStatementBuilder add(String sql, Object arg1, Object arg2) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template, Object arg1, Object arg2) {
+    this.template.append(template);
     this.bindings.add(arg1);
     this.bindings.add(arg2);
 
     return this;
   }
 
-  public SqlStatementBuilder add(String sql, Object... args) {
-    this.sqlString.append(sql);
+  public SqlBuilder add(String template, Object... args) {
+    this.template.append(template);
     for (Object i : args) {
       this.bindings.add(i);
     }
@@ -59,9 +59,9 @@ public class SqlStatementBuilder {
     return this;
   }
 
-  public SqlStatementBuilder addIn(String sql, Collection<?> bindings) {
-    this.sqlString
-      .append(sql)
+  public SqlBuilder addIn(String template, Collection<?> bindings) {
+    this.template
+      .append(template)
       .append(" in ("
 	      + bindings.stream().map(x -> "?").collect(Collectors.joining(", "))
 	      + ")");
@@ -70,40 +70,40 @@ public class SqlStatementBuilder {
     return this;
   }
 
-  public SqlStatementBuilder addIfNotNull(String sql, Object arg) {
+  public SqlBuilder addIfNotNull(String template, Object arg) {
     if (arg != null) {
-      this.sqlString.append(sql);
+      this.template.append(template);
       this.bindings.add(arg);
     }
 
     return this;
   }
 
-  public SqlStatementBuilder addIfNotEmpty(String sql, Collection<?> bindings) {
+  public SqlBuilder addIfNotEmpty(String template, Collection<?> bindings) {
     if (!bindings.isEmpty()) {
-      add(sql, bindings);
+      add(template, bindings);
     }
 
     return this;
   }
 
-  public SqlStatementBuilder addInIfNotEmpty(String sql, Collection<?> bindings) {
+  public SqlBuilder addInIfNotEmpty(String template, Collection<?> bindings) {
     if (!bindings.isEmpty()) {
-      addIn(sql, bindings);
+      addIn(template, bindings);
     }
 
     return this;
   }
 
-  public SqlStatementBuilder add(SqlStatement statement) {
-    this.sqlString.append(statement.getSql());
-    this.bindings.addAll(statement.getBindings());
+  public SqlBuilder add(Sql sql) {
+    this.template.append(sql.getTemplate());
+    this.bindings.addAll(sql.getBindings());
 
     return this;
   }
 
-  public SqlStatement build() {
-    return new BasicSqlStatement(sqlString.toString(), Collections.unmodifiableList(flattenBindings(bindings)));
+  public Sql build() {
+    return new BasicSql(template.toString(), Collections.unmodifiableList(flattenBindings(bindings)));
   }
 
   private List<?> flattenBindings(List<?> bindings) {
