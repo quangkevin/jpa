@@ -31,7 +31,7 @@ import com.jooreka.sql.SqlIndex;
 import com.jooreka.sql.SqlResultSet;
 import com.jooreka.sql.SqlSequence;
 import com.jooreka.sql.SqlSession;
-import com.jooreka.sql.SqlStatementBuilder;
+import com.jooreka.sql.SqlBuilder;
 import com.jooreka.sql.SqlTable;
 
 public final class ${vars.outerClassName} {
@@ -137,7 +137,7 @@ public final class ${vars.outerClassName} {
       #if ($vars.idColumn)
       Entity result = _entities.get(id);
       if (null == result) {
-        result = (Entity) getEntityWhere(new SqlStatementBuilder().add("$vars.idColumn.columnName = ?", id).build());
+        result = (Entity) getEntityWhere(new SqlBuilder().add("$vars.idColumn.columnName = ?", id).build());
       }
 
       return result;
